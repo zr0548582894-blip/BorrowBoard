@@ -1,0 +1,188 @@
+// BorrowBoard - סכמת מסד הנתונים
+// כל שינוי כאן דורש מיגרציה חדשה: npm run db:migrate -- --name <שם>
+
+generator client {
+  provider        = "prisma-client-js"
+  // Prisma Client ללא מנוע Rust: מתחבר למסד דרך הספרייה pg (@prisma/adapter-pg)
+  previewFeatures = ["queryCompiler", "driverAdapters"]
+  engineType      = "client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ProductCondition {
+  NEW
+  LIKE_NEW
+  USED
+}
+
+enum BorrowRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  RETURNED
+  CANCELLED
+}
+
+enum WantedItemStatus {
+  OPEN
+  CLOSED
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum NotificationType {
+  BORROW_REQUESTED
+  BORROW_APPROVED
+  BORROW_REJECTED
+  BORROW_CANCELLED
+  BORROW_RETURNED
+  OFFER_RECEIVED
+  OFFER_ACCEPTED
+  OFFER_REJECTED
+  OFFER_CANCELLED
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String   @db.VarChar(50)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String
+  phone        String   @db.VarChar(20)
+  city         String?  @db.VarChar(50)
+  role         Role     @default(USER)
+  isBlocked    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  products       Product[]
+  borrowRequests BorrowRequest[]
+  wantedItems    WantedItem[]
+  offers         Offer[]
+  notifications  Notification[]
+  images         Image[]
+}
+
+model Category {
+  id   Int    @id @default(autoincrement())
+  name String @unique @db.VarChar(50)
+
+  products    Product[]
+  wantedItems WantedItem[]
+}
+
+model Product {
+  id          Int              @id @default(autoincrement())
+  ownerId     Int
+  name        String           @db.VarChar(80)
+  description String           @db.VarChar(1000)
+  categoryId  Int
+  condition   ProductCondition
+  city        String           @db.VarChar(50)
+  imageUrl    String?          @db.VarChar(500)
+  maxDays     Int?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  owner          User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  category       Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  borrowRequests BorrowRequest[]
+
+  @@index([categoryId])
+  @@index([city])
+  @@index([ownerId])
+}
+
+model BorrowRequest {
+  id         Int                 @id @default(autoincrement())
+  productId  Int
+  borrowerId Int
+  startDate  DateTime            @db.Date
+  endDate    DateTime            @db.Date
+  message    String?             @db.VarChar(500)
+  status     BorrowRequestStatus @default(PENDING)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  product  Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  borrower User    @relation(fields: [borrowerId], references: [id], onDelete: Cascade)
+
+  @@index([productId, status])
+  @@index([borrowerId])
+}
+
+model WantedItem {
+  id          Int              @id @default(autoincrement())
+  requesterId Int
+  title       String           @db.VarChar(80)
+  description String           @db.VarChar(1000)
+  categoryId  Int
+  city        String           @db.VarChar(50)
+  imageUrl    String?          @db.VarChar(500)
+  neededFrom  DateTime?        @db.Date
+  neededUntil DateTime?        @db.Date
+  status      WantedItemStatus @default(OPEN)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  requester User     @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+  category  Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  offers    Offer[]
+
+  @@index([categoryId])
+  @@index([city])
+  @@index([requesterId])
+}
+
+model Offer {
+  id           Int              @id @default(autoincrement())
+  wantedItemId Int
+  offererId    Int
+  message      String           @db.VarChar(500)
+  condition    ProductCondition
+  imageUrl     String?          @db.VarChar(500)
+  status       OfferStatus      @default(PENDING)
+  createdAt    DateTime         @default(now())
+
+  wantedItem WantedItem @relation(fields: [wantedItemId], references: [id], onDelete: Cascade)
+  offerer    User       @relation(fields: [offererId], references: [id], onDelete: Cascade)
+
+  @@index([wantedItemId, status])
+  @@index([offererId])
+}
+
+model Notification {
+  id        Int              @id @default(autoincrement())
+  userId    Int
+  type      NotificationType
+  text      String           @db.VarChar(300)
+  link      String?          @db.VarChar(200)
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+}
+
+model Image {
+  id         Int      @id @default(autoincrement())
+  uploaderId Int
+  mimeType   String   @db.VarChar(30)
+  data       Bytes
+  createdAt  DateTime @default(now())
+
+  uploader User @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+}
