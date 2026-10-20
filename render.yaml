@@ -1,0 +1,31 @@
+# הגדרת פריסה ל-Render (Blueprint).
+# מסד הנתונים מוגדר בנפרד (Neon / Supabase / Render Postgres) ומחובר דרך DATABASE_URL.
+services:
+  - type: web
+    name: borrowboard-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    buildCommand: npm ci --include=dev && npm run build
+    # מריץ מיגרציות, יוצר קטגוריות/מנהל (אם הוגדר) ומפעיל את השרת
+    startCommand: npm run start:prod
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 1d
+      - key: CORS_ORIGIN
+        sync: false
+      - key: SEED_ADMIN_EMAIL
+        sync: false
+      - key: SEED_ADMIN_PASSWORD
+        sync: false

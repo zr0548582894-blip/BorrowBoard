@@ -1,0 +1,17 @@
+# תלויות ותוצרי בנייה
+node_modules/
+dist/
+coverage/
+
+# סודות - לעולם לא מעלים ל-GitHub
+.env
+.env.*
+!.env.example
+
+# קבצים זמניים
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
