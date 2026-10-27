@@ -13,6 +13,8 @@
  */
 import { config } from 'dotenv';
 import zlib from 'node:zlib';
+import fs from 'node:fs';
+import path from 'node:path';
 import bcrypt from 'bcryptjs';
 import { PrismaClient, type ProductCondition } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -102,8 +104,16 @@ async function ensureUser(data: { name: string; email: string; password: string;
   return { user, created: true };
 }
 
-async function image(uploaderId: number, color: string) {
-  const img = await prisma.image.create({ data: { uploaderId, mimeType: 'image/png', data: new Uint8Array(makePng(color)) } });
+// תמונות המוצרים לדוגמה נמצאות בתיקייה prisma/seed-images. אם קובץ חסר, נוצרת תמונה בצבע אחיד.
+const SEED_IMAGES_DIR = path.join(process.cwd(), 'prisma', 'seed-images');
+
+function imageData(file: string, color: string) {
+  const full = path.join(SEED_IMAGES_DIR, file);
+  return fs.existsSync(full) ? fs.readFileSync(full) : makePng(color);
+}
+
+async function image(uploaderId: number, color: string, file: string) {
+  const img = await prisma.image.create({ data: { uploaderId, mimeType: 'image/png', data: new Uint8Array(imageData(file, color)) } });
   return `/api/images/${img.id}`;
 }
 
@@ -123,18 +133,18 @@ async function seedDemoData(password: string) {
   }
   void sara;
 
-  type P = { name: string; description: string; category: string; condition: ProductCondition; maxDays: number | null; color: string };
+  type P = { name: string; description: string; category: string; condition: ProductCondition; maxDays: number | null; color: string; file: string };
   const yaelProducts: P[] = [
-    { name: 'סיר לחץ 6 ליטר', description: 'סיר לחץ נירוסטה במצב מצוין, כולל מכסה וגומייה חדשה.', category: 'כלי מטבח', condition: 'LIKE_NEW', maxDays: 14, color: '#C0784A' },
-    { name: 'מקדחה חשמלית', description: 'מקדחה רוטטת עם סט מקדחים לבטון ולעץ.', category: 'כלי עבודה', condition: 'USED', maxDays: 7, color: '#4A6FA5' },
-    { name: 'סט משניות מבואר', description: 'סט מלא בכריכה קשה, שמור היטב.', category: 'ספרים', condition: 'LIKE_NEW', maxDays: 30, color: '#6B8E5A' },
-    { name: 'מיחם לשבת 40 כוסות', description: 'מיחם חשמלי גדול, מתאים לאירועים ולשבתות.', category: 'ציוד לאירועים', condition: 'USED', maxDays: 7, color: '#8A6BB0' },
+    { name: 'סיר לחץ 6 ליטר', description: 'סיר לחץ נירוסטה במצב מצוין, כולל מכסה וגומייה חדשה.', category: 'כלי מטבח', condition: 'LIKE_NEW', maxDays: 14, color: '#C0784A', file: 'pressure-cooker.png' },
+    { name: 'מקדחה חשמלית', description: 'מקדחה רוטטת עם סט מקדחים לבטון ולעץ.', category: 'כלי עבודה', condition: 'USED', maxDays: 7, color: '#4A6FA5', file: 'drill.png' },
+    { name: 'סט משניות מבואר', description: 'סט מלא בכריכה קשה, שמור היטב.', category: 'ספרים', condition: 'LIKE_NEW', maxDays: 30, color: '#6B8E5A', file: 'books.png' },
+    { name: 'מיחם לשבת 40 כוסות', description: 'מיחם חשמלי גדול, מתאים לאירועים ולשבתות.', category: 'ציוד לאירועים', condition: 'USED', maxDays: 7, color: '#8A6BB0', file: 'urn.png' },
   ];
   const miriamProducts: P[] = [
-    { name: 'עגלת תינוק', description: 'עגלה מתקפלת עם גגון ושק שינה.', category: 'ציוד לתינוקות', condition: 'USED', maxDays: 30, color: '#D08AA0' },
-    { name: 'מפות לבנות לאירוע (10 יחידות)', description: 'מפות מלבניות לשולחנות של 1.80 מטר.', category: 'ציוד לאירועים', condition: 'LIKE_NEW', maxDays: 10, color: '#7AA6A6' },
-    { name: 'משחק קופסה משפחתי', description: 'משחק אסטרטגיה לכל המשפחה, כל החלקים במקום.', category: 'משחקים', condition: 'LIKE_NEW', maxDays: 14, color: '#C9A33B' },
-    { name: 'מסור אנכי', description: 'מסור חשמלי לחיתוך עץ, כולל להבים.', category: 'כלי עבודה', condition: 'USED', maxDays: null, color: '#5C5C7A' },
+    { name: 'עגלת תינוק', description: 'עגלה מתקפלת עם גגון ושק שינה.', category: 'ציוד לתינוקות', condition: 'USED', maxDays: 30, color: '#D08AA0', file: 'stroller.png' },
+    { name: 'מפות לבנות לאירוע (10 יחידות)', description: 'מפות מלבניות לשולחנות של 1.80 מטר.', category: 'ציוד לאירועים', condition: 'LIKE_NEW', maxDays: 10, color: '#7AA6A6', file: 'tablecloths.png' },
+    { name: 'משחק קופסה משפחתי', description: 'משחק אסטרטגיה לכל המשפחה, כל החלקים במקום.', category: 'משחקים', condition: 'LIKE_NEW', maxDays: 14, color: '#C9A33B', file: 'board-game.png' },
+    { name: 'מסור אנכי', description: 'מסור חשמלי לחיתוך עץ, כולל להבים.', category: 'כלי עבודה', condition: 'USED', maxDays: null, color: '#5C5C7A', file: 'jigsaw.png' },
   ];
 
   const created: Record<string, number> = {};
@@ -152,7 +162,7 @@ async function seedDemoData(password: string) {
           condition: p.condition,
           city,
           maxDays: p.maxDays,
-          imageUrl: await image(owner.id, p.color),
+          imageUrl: await image(owner.id, p.color, p.file),
         },
       });
       created[p.name] = prod.id;
